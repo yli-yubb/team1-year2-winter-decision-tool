@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const html=fs.readFileSync(new URL('./index.html',import.meta.url),'utf8');
+const code=html.split('<script>')[1].split('// UI')[0];
+const ctx=vm.createContext({structuredClone});
+vm.runInContext(code+';this.api={initial,calculate,winterCheck};',ctx);
+const {initial,calculate,winterCheck}=ctx.api;
+let n=0;const check=(a,b)=>{assert.equal(a,b);n++;};
+const w=winterCheck();check(w.net,4171);check(w.closing,73546);check(w.feasible,true);check(w.bridge,0);
+for(const p of initial.plans){const r=calculate(initial,p);check(r.valid,true);check(r.feasible,true);check(r.bridge,0);check(r.principal,15000);check(r.interest,3000);}
+const a=calculate(initial,initial.plans[0]);check(a.maint,3100);check(a.dep,7875);check(a.debt,15000);
+let p=structuredClone(initial.plans[0]);p.sales=0;let r=calculate(initial,p);check(r.tax,0);check(r.unsold,70000);check(r.loss,initial.opening.loss-r.beforeTax);
+p.sales=NaN;check(calculate(initial,p).valid,false);
+p=structuredClone(initial.plans[0]);p.production[3]=80000;check(calculate(initial,p).valid,false);
+p=structuredClone(initial.plans[1]);p.loan=60000;p.term=4;p.timing=2;r=calculate(initial,p);check(r.newPrincipal,15000);check(r.newInterest,6000);check(r.bridge,0);
+let s=structuredClone(initial);s.opening.cash=0;p=structuredClone(s.plans[1]);p.loan=120000;p.timing=4;check(calculate(s,p).feasible,false);p.timing=1;check(calculate(s,p).cashMarket,13000);
+s=structuredClone(initial);s.opening.machines[0].life=0;check(calculate(s,s.plans[0]).valid,false);
+s=structuredClone(initial);p=structuredClone(s.plans[1]);p.purchases.push({type:5,at:4});check(calculate(s,p).valid,false);p.purchases[0].at=-1;r=calculate(s,p);check(r.capex,28000);check(r.maint,4400);check(r.dep,11375);
+console.log(`${n} assertions passed.`);console.log('Plan A',JSON.stringify(a));console.log('Plan B',JSON.stringify(calculate(initial,initial.plans[1])));
